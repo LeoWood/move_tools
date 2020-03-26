@@ -1,0 +1,7 @@
+{
+"MODEL_PATH":"D:\\Liuhuan\\Move_Recognition\\bert\\experiment45_mask_abs_sen_refind_2\\output",
+"BERT_PATH":"D:\\Liuhuan\\BERT\\models\\uncased_L-12_H-768_A-12",
+"INPUT_FILE":"abstracts.txt",
+"OUTPUT_FILE":"results.txt"
+
+}
