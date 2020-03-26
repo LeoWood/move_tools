@@ -1,18 +1,7 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""BERT finetuning runner."""
+#!/usr/bin/env python
+#-*- coding:utf-8 -*-
+# Author: LiuHuan
+# Datetime: 2020/3/26 12:32
 
 from __future__ import absolute_import
 from __future__ import division
@@ -27,16 +16,20 @@ import tokenization
 import tensorflow as tf
 import numpy as np
 import spacy
+import json
 nlp = spacy.load("en_core_sci_sm")
-
 
 
 LABELS = ["0","1","2","3","4"]
 
-MODEL_PATH = r'D:\Liuhuan\Move_Recognition\bert\experiment45_mask_abs_sen_refind_2\output'
-# MODEL_PATH = r'D:\Liuhuan\Move_Recognition\bert\experiment39_mask_sen_original\output'
+with open('config.txt','r',encoding='utf=8') as f:
+    config_str = ''.join([line.strip() for line in f.readlines()])
+config = json.loads(config_str)
+
+
+MODEL_PATH = config['MODEL_PATH']
+BERT_PATH = config['BERT_PATH']
 MASK_SEQ_LENGTH = 512
-BERT_PATH = r"D:\Liuhuan\BERT\models\uncased_L-12_H-768_A-12"
 
 
 class InputExample(object):
@@ -525,8 +518,10 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
     return features
 
 
-def predict_move_masked_abs_sen_refind_1(text):
-    # sentences = [str(sen) for sen in nlp(abstract).sents]
+def predict_single_abs():
+    with open(config['INPUT_FILE'],'r',encoding='utf-8') as f:
+        text = f.readline().strip()
+
     tf.logging.set_verbosity(tf.logging.INFO)
 
     processors = {
@@ -535,18 +530,6 @@ def predict_move_masked_abs_sen_refind_1(text):
 
     bert_config = modeling.BertConfig.from_json_file(BERT_PATH + r"\bert_config.json")
 
-    # if FLAGS.max_seq_length > bert_config.max_position_embeddings:
-    #     raise ValueError(
-    #         "Cannot use sequence length %d because the BERT model "
-    #         "was only trained up to sequence length %d" %
-    #         (FLAGS.max_seq_length, bert_config.max_position_embeddings))
-
-    # tf.gfile.MakeDirs(r"D:\Liuhuan\Arxiv_Annotation\data")
-
-    # task_name = FLAGS.task_name.lower()
-    #
-    # if task_name not in processors:
-    #     raise ValueError("Task not found: %s" % (task_name))
 
     processor = processors['bert_move']()
 
@@ -556,9 +539,6 @@ def predict_move_masked_abs_sen_refind_1(text):
         vocab_file=BERT_PATH + r"\vocab.txt", do_lower_case=True)
 
     tpu_cluster_resolver = None
-    # if FLAGS.use_tpu and FLAGS.tpu_name:
-    #     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-    #         FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
     is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
     run_config = tf.contrib.tpu.RunConfig(
@@ -665,23 +645,16 @@ def predict_move_masked_abs_sen_refind_1(text):
 
     cla = {'0': 'Purpose', '1': 'Methods', '2': 'Results', '3': 'Conclusions','4':'Background'}
     i = 0
-    for a in results:
-        # a = prediction.tolist()
-        m = max(a)
-        print('<<' + cla[str(a.index(max(a)))] + '>> ' + sentences[i])
-        # if m>0.7:
-        #     ano[i] = cla[str(a.index(max(a)))]
-        # else:
-        #     sens_sub[i] = sentences[i]
-        i += 1
+    with open(config['OUTPUT_FILE'],'w',encoding='utf-8') as f:
+        for a in results:
+            m = max(a)
+            f.write(cla[str(a.index(max(a)))] + ': ' + sentences[i] + '\n')
+            print('<<' + cla[str(a.index(max(a)))] + '>> ' + sentences[i])
+            i += 1
 
     return results,sentences
 
 if __name__ == "__main__":
-    import time
-    while True:
-        text = input()
-        t1 = time.time()
-        predict_move_masked_abs_sen_refind_1(text)
-        print('用时: ', time.time() - t1)
-    pass
+
+    if config['SINGLE_ABSTRACT']:
+        predict_single_abs()
