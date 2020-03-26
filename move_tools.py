@@ -517,6 +517,147 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         features.append(feature)
     return features
 
+def predict_abstracts():
+    with open(config['INPUT_FILE'],'r',encoding='utf-8') as f:
+        texts = [line.strip() for line in f.readline()]
+
+    tf.logging.set_verbosity(tf.logging.INFO)
+
+    processors = {
+        "bert_move": MoveProcessor
+    }
+
+    bert_config = modeling.BertConfig.from_json_file(BERT_PATH + r"\bert_config.json")
+
+
+    processor = processors['bert_move']()
+
+    label_list = processor.get_labels()
+
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=BERT_PATH + r"\vocab.txt", do_lower_case=True)
+
+    tpu_cluster_resolver = None
+
+    is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+    run_config = tf.contrib.tpu.RunConfig(
+        cluster=tpu_cluster_resolver,
+        master=None,
+        model_dir=MODEL_PATH,
+        save_checkpoints_steps=1000,
+        tpu_config=tf.contrib.tpu.TPUConfig(
+            iterations_per_loop=1000,
+            num_shards=8,
+            per_host_input_for_training=is_per_host))
+
+    train_examples = None
+    num_train_steps = None
+    num_warmup_steps = None
+    # if False:
+    #     train_examples = processor.get_train_examples(FLAGS.data_dir)
+    #     num_train_steps = int(
+    #         len(train_examples) / FLAGS.train_batch_size * FLAGS.num_train_epochs)
+    #     num_warmup_steps = int(num_train_steps * FLAGS.warmup_proportion)
+
+    model_fn = model_fn_builder(
+        bert_config=bert_config,
+        num_labels=len(label_list),
+        init_checkpoint= BERT_PATH + r"\bert_model.ckpt",
+        learning_rate=2e-5,
+        num_train_steps=num_train_steps,
+        num_warmup_steps=num_warmup_steps,
+        use_tpu=False,
+        use_one_hot_embeddings=False)
+
+    # If TPU is not available, this will fall back to normal Estimator on CPU
+    # or GPU.
+    estimator = tf.contrib.tpu.TPUEstimator(
+        use_tpu=False,
+        model_fn=model_fn,
+        config=run_config,
+        train_batch_size=32,
+        eval_batch_size=8,
+        predict_batch_size=8)
+
+    predict_examples_1 = []
+    predict_examples_2 = []
+
+
+    nums = [] # 保存每篇摘要句子数量
+
+    sentences = []
+    for text in texts:
+        sens = [str(sen)for sen in nlp(text).sents]
+        sentences += sens
+        nums.append(len(sens))
+        i = 0
+        for sen in sentences:
+            masked_abs = ''
+            mask = ' AAAA ' + 'AAAA ' * 23 + 'AAAA. '
+            if i == 0:
+                masked_abs = mask + ' '.join(sentences[1:])
+            elif i == len(sentences) - 1:
+                masked_abs = ' '.join(sentences[:-1]) + mask
+            else:
+                masked_abs = ' '.join(sentences[:i]) + mask + ' '.join(sentences[i + 1:])
+            # print(masked_abs)
+            guid = 'test-' + str(i)
+            predict_examples_2.append(InputExample(guid=guid, text_a=masked_abs, text_b=None, label='0'))
+            i += 1
+        for sen in sentences:
+            guid = 'test-' + str(i)
+            predict_examples_1.append(InputExample(guid=guid, text_a=sen, text_b=None, label='0'))
+            i += 1
+
+    predict_file = os.path.join(MODEL_PATH, "predict.tf_record")
+    file_based_convert_examples_to_features(predict_examples_1, label_list,
+                                            MASK_SEQ_LENGTH, tokenizer,
+                                            predict_file)
+
+    predict_drop_remainder = False
+    predict_input_fn = file_based_input_fn_builder(
+        input_file=predict_file,
+        seq_length=MASK_SEQ_LENGTH,
+        is_training=False,
+        drop_remainder=predict_drop_remainder)
+
+    result_1 = estimator.predict(input_fn=predict_input_fn)
+
+    predict_file = os.path.join(MODEL_PATH, "predict.tf_record")
+    file_based_convert_examples_to_features(predict_examples_2, label_list,
+                                            MASK_SEQ_LENGTH, tokenizer,
+                                            predict_file)
+
+    predict_drop_remainder = False
+    predict_input_fn = file_based_input_fn_builder(
+        input_file=predict_file,
+        seq_length=MASK_SEQ_LENGTH,
+        is_training=False,
+        drop_remainder=predict_drop_remainder)
+
+    result_2 = estimator.predict(input_fn=predict_input_fn)
+
+
+
+
+    result1 = [r.tolist() for r in result_1]
+    result2 = [r.tolist() for r in result_2]
+
+    results = np.array(result1) + np.array(result2)
+    results = results.tolist()
+
+    cla = {'0': 'Purpose', '1': 'Methods', '2': 'Results', '3': 'Conclusions','4':'Background'}
+    i = 0
+    with open(config['OUTPUT_FILE'],'w',encoding='utf-8') as f:
+        for num in nums:
+            result_temp = results[i:i+num]
+            for a in result_temp:
+                f.write(cla[str(a.index(max(a)))] + ': ' + sentences[i] + '\n')
+            f.write('\n')
+            i += num
+
+    return results,sentences
+
 
 def predict_single_abs():
     with open(config['INPUT_FILE'],'r',encoding='utf-8') as f:
