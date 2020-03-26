@@ -1,0 +1,8 @@
+*.zip
+*.html
+*.xlsx
+*.log
+*.h5
+*.csv
+*.pth
+exe/

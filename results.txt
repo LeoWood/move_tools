@@ -1,0 +1,10 @@
+Background: The galaxy-wide stellar initial mass function (gwIMF) of a galaxy in dependence of its metallicity and star formation rate (SFR) can be calculated by the integrated galactic IMF (IGIMF) theory.
+Background: Lacchin et al. (2019) apply the IGIMF theory for the first time to study the chemical evolution of the ultra-faint dwarf (UFD) satellite galaxies and failed to reproduce the data.
+Conclusions: Here, we find that the IGIMF theory is naturally consistent with the data.
+Methods: We apply the time-evolving gwIMF calculated at each timestep.
+Methods: The number of type Ia supernova explosions per unit stellar mass formed is renormalised according to the gwIMF.
+Conclusions: The chemical evolution of Bo\"otes I, one of the best observed UFD, is calculated.
+Conclusions: Our calculation suggests a mildly bottom-light and top-light gwIMF for Bo\"otes I, and that this UFD has the same gas-consumption timescale as other dwarfs but was quenched about 0.1 Gyr after formation, being consistent with independent estimations and similar to Dragonfly 44.
+Conclusions: The recovered best fitting input parameters in this work are not covered in the work of Lacchin et al. (2019), creating the discrepancy between our conclusions.
+Conclusions: In addition, a detailed discussion of uncertainties is presented addressing how the results of chemical evolution models depend on applied assumptions.
+Conclusions: This study demonstrates the power of the IGIMF theory in understanding the star-formation in extreme environments and shows that UDFs are a promising pathway to constrain the variation of the low-mass stellar IMF.
